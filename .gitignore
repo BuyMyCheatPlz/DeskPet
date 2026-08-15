@@ -1,0 +1,13 @@
+# Build outputs
+bin/
+obj/
+publish-single/
+
+# User/runtime artifacts (not part of the source)
+publish/DeskPet.pdb
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo

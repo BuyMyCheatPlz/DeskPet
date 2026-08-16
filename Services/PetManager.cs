@@ -596,6 +596,7 @@ public sealed class PetManager : INotifyPropertyChanged
     public void Poke()
     {
         if (_lifeState != PetLifeState.Roaming || _isDragging || _movementMode != PetMovementMode.Floor) return;
+        StopMoving();   // 点击互动时立即停下（若正在行走/躲避）
         if (_happiness < 30)
         {
             // 心情差时戳一戳会委屈，心情略微下降
@@ -608,6 +609,17 @@ public sealed class PetManager : INotifyPropertyChanged
             SetAction(PetAction.Happy, forcedVariant: 0);
             Happiness = Math.Max(0, _happiness - 1);
         }
+    }
+
+    /// <summary>Cancel any in-progress movement (walking or cursor-fleeing)
+    /// and settle the pet in place on the floor.</summary>
+    public void StopMoving()
+    {
+        _walkTarget = null;
+        _fleeing = false;
+        _movementMode = PetMovementMode.Floor;
+        _fallTargetY = null;
+        _fallVelocity = 0;
     }
 
     public void Pet()

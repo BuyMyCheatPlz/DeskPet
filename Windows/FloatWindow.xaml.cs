@@ -31,6 +31,7 @@ public partial class FloatWindow : Window
             PositionDefault();
             RefreshFace();
         };
+        SourceInitialized += (_, _) => NativeWindow.HideFromAltTab(this);   // 不显示在 Alt+Tab / 任务栏
         // Bind to the window itself so the whole (mostly transparent) window area
         // participates in drag + click, not just the small circle border.
         MouseLeftButtonDown += FloatWindow_MouseDown;

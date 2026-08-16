@@ -41,6 +41,7 @@ public partial class PetWindow : Window
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            NativeWindow.HideFromAltTab(this);   // 不显示在 Alt+Tab / 任务栏
         };
     }
 

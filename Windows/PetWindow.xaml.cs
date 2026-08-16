@@ -42,19 +42,38 @@ public partial class PetWindow : Window
             var hwnd = new WindowInteropHelper(this).Handle;
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
             NativeWindow.HideFromAltTab(this);   // 不显示在 Alt+Tab / 任务栏
+            ApplyClickThrough();                 // 应用鼠标穿透扩展样式
         };
+    }
+
+    private void ApplyClickThrough()
+    {
+        NativeWindow.SetClickThrough(this, AppSettings.Instance.PetClickThrough);
     }
 
     /// <summary>When click-through is enabled, make the pet window transparent to
     /// the mouse: clicks pass through to whatever is behind the pet.</summary>
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WmNcHitTest && AppSettings.Instance.PetClickThrough)
+        if (msg == WmNcHitTest)
         {
-            handled = true;
-            return (IntPtr)HtTransparent;
+            // Keep the extended style in sync so toggles apply immediately.
+            ApplyClickThrough();
+            if (AppSettings.Instance.PetClickThrough)
+            {
+                handled = true;
+                return (IntPtr)HtTransparent;
+            }
         }
         return IntPtr.Zero;
+    }
+
+    // Re-apply the click-through style once the extra style has been set, so
+    // clicks actually land on the window behind the pet.
+    public static void NotifyClickThroughChanged()
+    {
+        if (Instance.IsLoaded)
+            Instance.ApplyClickThrough();
     }
 
     public void ShowPet()

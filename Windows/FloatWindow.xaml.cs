@@ -297,6 +297,7 @@ public partial class FloatWindow : Window
             AppSettings.Instance.PetClickThrough = !AppSettings.Instance.PetClickThrough;
             AppSettings.Instance.Save();
             clickThrough.IsChecked = AppSettings.Instance.PetClickThrough;
+            PetWindow.NotifyClickThroughChanged();   // 立即应用到桌宠窗口
         };
         menu.Items.Add(clickThrough);
 

@@ -236,6 +236,7 @@ public partial class SettingsWindow : Window
 
         s.EnableHaptics = EnableHaptics.IsChecked == true;
         s.PetClickThrough = PetClickThrough.IsChecked == true;
+        PetWindow.NotifyClickThroughChanged();   // 立即应用到桌宠窗口
         bool autostart = AutoStartOnBoot.IsChecked == true;
         if (autostart != AutoStart.IsEnabled) AutoStart.SetEnabled(autostart);
 

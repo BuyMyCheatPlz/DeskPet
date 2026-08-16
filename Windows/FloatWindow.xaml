@@ -1,0 +1,40 @@
+<Window x:Class="DeskPet.Shell.FloatWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        ShowActivated="False"
+        Width="64" Height="64">
+    <Viewbox x:Name="RootViewbox" Stretch="Uniform">
+        <Grid Width="64" Height="64">
+            <Border x:Name="CircleButton"
+                    Width="56" Height="56"
+                    CornerRadius="28"
+                    Background="#E6203038"
+                    BorderBrush="#66FFFFFF"
+                    BorderThickness="1.5"
+                    Cursor="Hand"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.5" />
+                </Border.Effect>
+                <Border Width="42" Height="42" ClipToBounds="True">
+                    <Border.Clip>
+                        <EllipseGeometry RadiusX="21" RadiusY="21" Center="21,21" />
+                    </Border.Clip>
+                    <Grid>
+                        <Image x:Name="FaceImage" Stretch="UniformToFill" />
+                        <TextBlock x:Name="IconFallback" Text="🐾" FontSize="22"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Visibility="Collapsed" />
+                    </Grid>
+                </Border>
+            </Border>
+        </Grid>
+    </Viewbox>
+</Window>

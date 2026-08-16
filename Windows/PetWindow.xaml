@@ -11,7 +11,7 @@
         Focusable="False">
     <Grid Background="{x:Null}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="78" />
+            <RowDefinition Height="110" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -28,23 +28,24 @@
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" ShadowDepth="4" Opacity="0.4" />
             </Border.Effect>
-            <StackPanel Margin="10,8">
+            <StackPanel Margin="8,8">
                 <TextBlock x:Name="StatsText"
                            Foreground="White"
                            FontSize="11"
                            HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
                            Text="😺 ❤️ 100%  ✨ 100%" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
                     <Button x:Name="PetButton" Click="PetButton_Click"
-                            Content="Pet" Width="54" Height="26" Margin="0,0,4,0"
+                            Content="抚摸" Width="44" Height="28" Margin="0,0,4,0"
                             Background="#FF5C8AD6" Foreground="White" BorderThickness="0"
                             FontSize="11" Cursor="Hand" />
                     <Button x:Name="ChatButton" Click="ChatButton_Click"
-                            Content="Chat" Width="54" Height="26" Margin="0,0,4,0"
+                            Content="对话" Width="44" Height="28" Margin="0,0,4,0"
                             Background="#FF7A5CD6" Foreground="White" BorderThickness="0"
                             FontSize="11" Cursor="Hand" />
                     <Button x:Name="HomeButton" Click="HomeButton_Click"
-                            Content="Home" Width="54" Height="26"
+                            Content="回巢" Width="44" Height="28"
                             Background="#33333333" Foreground="White" BorderThickness="0"
                             FontSize="11" Cursor="Hand" />
                 </StackPanel>

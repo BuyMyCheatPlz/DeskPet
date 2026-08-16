@@ -22,12 +22,24 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Global exception logging — prevents silent crashes and captures the
+        // stack for diagnosing the intermittent interaction freeze/crash.
+        DispatcherUnhandledException += OnDispatcherUnhandled;
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandled;
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += OnTaskUnobserved;
+
         // Ensure the default skin folder exists with a built-in placeholder skin
         PetSkin.EnsureDefaultSkin();
+
+        // Sync any skin packs bundled in the app's Skins/ into the user's skin folder
+        PetSkin.SyncBundledSkins();
 
         AppSettings.Instance.Load();
 
         CreateTrayIcon();
+
+        // Circular floating window (replaces the island) with the action menu.
+        FloatWindow.Instance.ShowFloat();
 
         // Show the desktop pet (start the pet mid-desktop).
         if (AppSettings.Instance.PetEnabled)
@@ -47,20 +59,20 @@ public partial class App : System.Windows.Application
     {
         _trayIcon = new NotifyIcon
         {
-            Text = "DeskPet",
+            Text = "DeskPet 桌面宠物",
             Visible = true,
             Icon = BuildIcon(),
         };
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Open Settings", null, (_, _) => Dispatcher.Invoke(OpenSettings));
-        menu.Items.Add("Chat with pet", null, (_, _) => Dispatcher.Invoke(ChatWindow.ShowChat));
+        menu.Items.Add("打开设置", null, (_, _) => Dispatcher.Invoke(OpenSettings));
+        menu.Items.Add("和宠物对话", null, (_, _) => Dispatcher.Invoke(ChatWindow.ShowChat));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Let pet out", null, (_, _) => Dispatcher.Invoke(() => PetManager.Instance.LeaveHome()));
-        menu.Items.Add("Send pet home", null, (_, _) => Dispatcher.Invoke(() => PetManager.Instance.GoHome()));
+        menu.Items.Add("放宠物出来", null, (_, _) => Dispatcher.Invoke(() => PetManager.Instance.LeaveHome()));
+        menu.Items.Add("让宠物回家", null, (_, _) => Dispatcher.Invoke(() => PetManager.Instance.GoHome()));
 
         // Pet model submenu
-        var modelMenu = new ToolStripMenuItem("Pet model");
+        var modelMenu = new ToolStripMenuItem("宠物形象");
         foreach (var model in PetSkin.GetAvailableModels())
         {
             var item = new ToolStripMenuItem(model) { Checked = model == AppSettings.Instance.PetModel };
@@ -68,17 +80,17 @@ public partial class App : System.Windows.Application
             modelMenu.DropDownItems.Add(item);
         }
         modelMenu.DropDownItems.Add(new ToolStripSeparator());
-        var importFolder = new ToolStripMenuItem("Import skin from folder…");
+        var importFolder = new ToolStripMenuItem("从文件夹导入皮肤…");
         importFolder.Click += (_, _) => Dispatcher.Invoke(SkinImporter.ImportFromFolder);
         modelMenu.DropDownItems.Add(importFolder);
-        var importZip = new ToolStripMenuItem("Import skin from zip…");
+        var importZip = new ToolStripMenuItem("从压缩包导入皮肤…");
         importZip.Click += (_, _) => Dispatcher.Invoke(SkinImporter.ImportFromZip);
         modelMenu.DropDownItems.Add(importZip);
         menu.Items.Add(modelMenu);
 
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Restart DeskPet", null, (_, _) => Dispatcher.Invoke(Restart));
-        menu.Items.Add("Quit", null, (_, _) => Dispatcher.Invoke(Shutdown));
+        menu.Items.Add("重启 DeskPet", null, (_, _) => Dispatcher.Invoke(Restart));
+        menu.Items.Add("退出", null, (_, _) => Dispatcher.Invoke(Shutdown));
 
         _trayIcon.ContextMenuStrip = menu;
         _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(OpenSettings);
@@ -115,7 +127,7 @@ public partial class App : System.Windows.Application
         _settingsWindow.Activate();
     }
 
-    private void Restart()
+    public void Restart()
     {
         var exe = Process.GetCurrentProcess().MainModule?.FileName;
         if (!string.IsNullOrEmpty(exe))
@@ -143,5 +155,41 @@ public partial class App : System.Windows.Application
         MediaController.Instance.Dispose();
         _trayIcon?.Dispose();
         base.OnExit(e);
+    }
+
+    // ---- Global exception logging ----
+
+    private static string CrashLogPath =>
+        System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "DeskPet", "crash.log");
+
+    private static void LogCrash(string source, Exception ex)
+    {
+        try
+        {
+            var dir = System.IO.Path.GetDirectoryName(CrashLogPath)!;
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(CrashLogPath,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]\r\n{ex}\r\n\r\n");
+        }
+        catch { /* ignore logging failures */ }
+    }
+
+    private void OnDispatcherUnhandled(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        LogCrash("DispatcherUnhandled", e.Exception);
+        e.Handled = true; // keep the app alive rather than crashing outright
+    }
+
+    private void OnDomainUnhandled(object sender, UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception ex) LogCrash("AppDomainUnhandled", ex);
+    }
+
+    private void OnTaskUnobserved(object? sender, System.Threading.Tasks.UnobservedTaskExceptionEventArgs e)
+    {
+        LogCrash("UnobservedTask", e.Exception);
+        e.SetObserved();
     }
 }

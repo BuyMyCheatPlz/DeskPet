@@ -69,6 +69,7 @@ public sealed class PetManager : INotifyPropertyChanged
     private double _sleepHoldRemaining;
     private PetMovementMode _movementMode = PetMovementMode.Floor;
     private double _fallVelocity;
+    private double? _fallTargetY; // where the out-of-home drop should land (null = bottom of screen)
     private const double WalkSpeed = 70;
     private const double Tick = 1.0 / 60.0;
 
@@ -80,7 +81,10 @@ public sealed class PetManager : INotifyPropertyChanged
     public void Start()
     {
         if (_animTimer != null) return;
-        _windowPosition = InitialRoamingPosition();
+        // Use the property setter so the window is notified and positioned
+        // immediately — assigning the backing field here left the window stuck
+        // at (0,-110) and it only "teleported" into view on the first move.
+        WindowPosition = InitialRoamingPosition();
         WindowAlpha = 1;
         _animTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
@@ -112,6 +116,19 @@ public sealed class PetManager : INotifyPropertyChanged
         CurrentFrame = null;
         _currentVariant = 0;
         _lastFrameIndex = -1;
+    }
+
+    /// <summary>Re-reads the configured pet size and repositions the window.
+    /// Called after the user changes "pet scale" so the size updates immediately.
+    /// The skin stays cached — only the display scale changes.</summary>
+    public void ApplyScale()
+    {
+        if (_lifeState == PetLifeState.Roaming)
+        {
+            _lastFrameIndex = -1;
+            _frameProgress = 0;
+        }
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WindowSize)));
     }
 
     /// <summary>Switch to a different built-in pet model and reload the skin.</summary>
@@ -199,11 +216,16 @@ public sealed class PetManager : INotifyPropertyChanged
                 _fallVelocity += 500 * Tick;
                 var pos = _windowPosition;
                 pos.Y += _fallVelocity * Tick;
+                // Floor line: never let the pet sink past the bottom of the work area.
                 double floorY = WorkArea.Bottom - WindowSize.Height * 0.06;
-                if (pos.Y >= floorY)
+                // If leaving home, land after a short drop instead of falling to the floor.
+                double landY = _fallTargetY ?? floorY;
+                landY = Math.Min(landY, floorY); // clamp to bottom (fallback)
+                if (pos.Y >= landY)
                 {
-                    pos.Y = floorY;
+                    pos.Y = landY;
                     WindowPosition = pos;
+                    _fallTargetY = null;
                     Land();
                 }
                 else
@@ -263,16 +285,11 @@ public sealed class PetManager : INotifyPropertyChanged
 
         if (isLoop)
         {
-            int loopPoint = Skin.LoopPoint(Action, _currentVariant);
-            int idx;
-            if (count >= total && loopPoint > 0 && _frameProgress >= count)
-            {
-                idx = loopPoint + (int)(_frameProgress - count) % (count - loopPoint);
-            }
-            else
-            {
-                idx = (int)_frameProgress % count;
-            }
+            // Simple frame-0..count-1 loop. A "loop point" optimisation previously
+            // jumped from the last frame to a middle frame, which looked like two
+            // clips stitched together (a visible hitch at the seam) when the
+            // signature match was imperfect.
+            int idx = (int)_frameProgress % count;
             if (idx != _lastFrameIndex)
             {
                 CurrentFrame = frames[idx];
@@ -307,7 +324,19 @@ public sealed class PetManager : INotifyPropertyChanged
                     if (!_isDragging)
                     {
                         SetAction(PetAction.Idle);
-                        ResetIdleCounter();
+                        // If the sleep probability is dominant, re-enter sleep
+                        // quickly instead of idling a long time — so "sleep = 100%"
+                        // really looks like the pet mostly sleeping.
+                        if (AppSettings.Instance.AiSleepChance >= 0.5
+                            && AppSettings.Instance.AiSleepChance > AppSettings.Instance.AiWalkChance
+                            && AppSettings.Instance.AiSleepChance > AppSettings.Instance.AiActionChance)
+                        {
+                            _idleCounter = Random.Shared.Next(2, 6);
+                        }
+                        else
+                        {
+                            ResetIdleCounter();
+                        }
                     }
                 }
             }
@@ -325,32 +354,53 @@ public sealed class PetManager : INotifyPropertyChanged
     private void DecideNextBehavior()
     {
         bool sad = _happiness < 25;
-        double roll = Random.Shared.NextDouble();
         if (sad)
         {
-            if (roll < 0.30) StartSleeping();
-            else if (roll < 0.50) SetAction(PetAction.Hurt);
-            else if (roll < 0.70) StartWalking();
+            double r = Random.Shared.NextDouble();
+            if (r < 0.30) StartSleeping();
+            else if (r < 0.50) SetAction(PetAction.Hurt);
+            else if (r < 0.70) StartWalking();
             else ResetIdleCounter();
+            return;
         }
-        else
+
+        // Weighted pick across walk / sleep / action / idle. Probabilities are
+        // normalised against their sum, so idle is directly controllable and the
+        // relative weights always behave intuitively (no branch can be unreachable).
+        double walkC = Math.Max(0, AppSettings.Instance.AiWalkChance);
+        double sleepC = Math.Max(0, AppSettings.Instance.AiSleepChance);
+        double actC = Math.Max(0, AppSettings.Instance.AiActionChance);
+        double idleC = Math.Max(0, AppSettings.Instance.AiIdleChance);
+        double total = walkC + sleepC + actC + idleC;
+        if (total <= 0) total = 1;
+        double roll = Random.Shared.NextDouble() * total;
+
+        if (roll < walkC)
         {
-            if (roll < 0.20) StartWalking();
-            else if (roll < 0.32) StartSleeping();
-            else if (roll < 0.42)
-            {
-                double mini = Random.Shared.NextDouble();
-                if (mini < 0.50) SetAction(PetAction.Yawn);
-                else if (mini < 0.80) SetAction(PetAction.Happy);
-                else SetAction(PetAction.Hurt);
-                ResetIdleCounter();
-            }
-            else
-            {
-                ResetIdleCounter();
-                if (Skin?.VariantCount(PetAction.Idle) > 1) SetAction(PetAction.Idle, true);
-            }
+            StartWalking();
+            return;
         }
+        roll -= walkC;
+        if (roll < sleepC)
+        {
+            StartSleeping();
+            return;
+        }
+        roll -= sleepC;
+        if (roll < actC)
+        {
+            double mini = Random.Shared.NextDouble();
+            if (mini < 0.50) SetAction(PetAction.Yawn);
+            else if (mini < 0.80) SetAction(PetAction.Happy);
+            else SetAction(PetAction.Hurt);
+            ResetIdleCounter();
+            return;
+        }
+
+        // Idle: keep idling (optionally reshuffle the idle variant).
+        ResetIdleCounter();
+        if (Skin?.VariantCount(PetAction.Idle) > 1 && (Skin?.AllVariantsCached(PetAction.Idle) == true))
+            SetAction(PetAction.Idle, true);
     }
 
     private void StartWalking()
@@ -418,9 +468,13 @@ public sealed class PetManager : INotifyPropertyChanged
     // ------------------------------------------------------------------
     // Home / out
     //
-    // "Home" for the pet is the bottom-right overflow corner where the
-    // system tray lives. The pet walks over there, then fades out.
+    // "Home" for the pet is the floating window (which replaced the island).
+    // The pet walks over to the floating window's current position, then fades.
     // ------------------------------------------------------------------
+
+    /// <summary>Screen point the pet walks to when going home. Updated by the
+    /// floating window as it moves; defaults to the tray corner.</summary>
+    public static Point HomeAnchor { get; set; } = new Point(-1, -1);
 
     /// <summary>Screen-space hotspot around the tray overflow corner (bottom-right).</summary>
     public static Point TrayHomePoint
@@ -432,14 +486,19 @@ public sealed class PetManager : INotifyPropertyChanged
         }
     }
 
+    private static Point ResolveHomePoint()
+    {
+        var p = HomeAnchor;
+        if (p.X < 0 || p.Y < 0) return TrayHomePoint;
+        return p;
+    }
+
     public void GoHome()
     {
         if (_lifeState != PetLifeState.Roaming || _isDragging || _movingHome) return;
         var size = WindowSize;
-        // Target: tucked into the bottom-right corner (near the tray), pet
-        // fully visible above/beside the overflow menu.
-        var p = TrayHomePoint;
-        var target = new Point(p.X - size.Width - 8, p.Y - size.Height - 8);
+        var p = ResolveHomePoint();
+        var target = new Point(p.X - size.Width / 2, p.Y - size.Height / 2);
         _walkTarget = null;
         _movingHome = true;
         _fading = false;
@@ -453,10 +512,13 @@ public sealed class PetManager : INotifyPropertyChanged
     {
         if (_lifeState != PetLifeState.AtHome || _movingHome) return;
         var size = WindowSize;
-        var p = TrayHomePoint;
+        var p = ResolveHomePoint();
         _movementMode = PetMovementMode.Floor;
-        // Emerge from the tray corner with a drop (fall) animation, then land and roam.
-        WindowPosition = new Point(p.X - size.Width - 8, p.Y - size.Height - 8);
+        // Emerge at the floating window, then drop by 25% of the screen width
+        // (clamped to the work-area floor as a fallback).
+        double startY = p.Y - size.Height / 2;
+        WindowPosition = new Point(p.X - size.Width / 2, startY);
+        _fallTargetY = startY + WorkArea.Width * 0.25;
         WindowAlpha = 1;
         _movingHome = false;
         _fading = false;
@@ -475,11 +537,14 @@ public sealed class PetManager : INotifyPropertyChanged
         if (_lifeState != PetLifeState.Roaming || _isDragging || _movementMode != PetMovementMode.Floor) return;
         if (_happiness < 30)
         {
+            // 心情差时戳一戳会委屈，心情略微下降
             SetAction(PetAction.Hurt);
+            Happiness = Math.Max(0, _happiness - 1);
         }
         else
         {
-            SetAction(PetAction.Happy);
+            // 心情好时戳一戳 = 开心地蹦一下（happy 变体 0），轻微消耗心情
+            SetAction(PetAction.Happy, forcedVariant: 0);
             Happiness = Math.Max(0, _happiness - 1);
         }
     }
@@ -487,8 +552,9 @@ public sealed class PetManager : INotifyPropertyChanged
     public void Pet()
     {
         if (_lifeState != PetLifeState.Roaming || _isDragging) return;
+        // 抚摸 = 温柔地享受（happy 变体 1），显著恢复心情
         Happiness = Math.Min(100, _happiness + 12);
-        SetAction(PetAction.Happy);
+        SetAction(PetAction.Happy, forcedVariant: 1);
     }
 
     public void StartDrag()
@@ -522,9 +588,11 @@ public sealed class PetManager : INotifyPropertyChanged
         Happiness = Math.Min(100, Math.Max(0, _happiness + (50 - _happiness) * 0.04));
     }
 
-    private void SetAction(PetAction newAction, bool forceReshuffle = false)
+    private void SetAction(PetAction newAction, bool forceReshuffle = false, int? forcedVariant = null)
     {
-        if (!forceReshuffle && Action == newAction) return;
+        // Allow an explicit variant to re-trigger the same action (e.g. poke uses
+        // happy variant 0 while pet uses variant 1), otherwise identical repeats are no-ops.
+        if (!forceReshuffle && Action == newAction && (forcedVariant == null || forcedVariant == _currentVariant)) return;
         if (newAction != PetAction.Yawn && newAction != PetAction.Sleep)
         {
             _pendingSleep = false;
@@ -534,7 +602,9 @@ public sealed class PetManager : INotifyPropertyChanged
         _frameProgress = 0;
         _lastFrameIndex = -1;
         Skin?.MarkPlayed(newAction);
-        _currentVariant = Skin?.PreferredVariant(newAction) ?? 0;
+        _currentVariant = forcedVariant ?? Skin?.PreferredVariant(newAction) ?? 0;
+        var vc = Skin?.VariantCount(newAction) ?? 0;
+        if (vc > 0 && _currentVariant >= vc) _currentVariant = vc - 1;
 
         if (forceReshuffle || newAction == PetAction.Idle || newAction == PetAction.Home)
         {

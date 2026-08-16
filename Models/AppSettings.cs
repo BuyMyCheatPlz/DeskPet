@@ -26,8 +26,11 @@ public sealed class AppSettings : INotifyPropertyChanged
 
     // ---- Desktop Pet ----
     public bool PetEnabled { get; set; } = true;
-    /// <summary>Selected built-in pet model name (cat/dog/rabbit/panda).</summary>
-    public string PetModel { get; set; } = "cat";
+    /// <summary>When true, the pet window is mouse-transparent: clicks pass
+    /// through to whatever is behind it.</summary>
+    public bool PetClickThrough { get; set; }
+    /// <summary>Selected pet model name (default deepseek-girl).</summary>
+    public string PetModel { get; set; } = "deepseek-girl";
     public string PetSkinDirectory { get; set; } = "";
     public double PetScale { get; set; } = 0.75;
     public double PetStatDecaySpeed { get; set; } = 0.5;
@@ -35,12 +38,25 @@ public sealed class AppSettings : INotifyPropertyChanged
     public double PetRoamInterval { get; set; } = 30.0;
     public double PetSoundVolume { get; set; } = 0.25;
 
+    // ---- Behavior AI trigger probabilities (weighted, normalised at runtime) ----
+    public double AiWalkChance { get; set; } = 0.20;
+    public double AiSleepChance { get; set; } = 0.12;
+    public double AiActionChance { get; set; } = 0.10;
+    public double AiIdleChance { get; set; } = 0.58;
+
+    // ---- Per-action playback speed multiplier (action name -> multiplier) ----
+    public System.Collections.Generic.Dictionary<string, double> ActionSpeed { get; set; } = new();
+
     // ---- AI chat ----
     /// <summary>"deepseek" | "openai" | "custom"</summary>
     public string AiProvider { get; set; } = "deepseek";
     public string AiApiKey { get; set; } = "";
     public string AiModel { get; set; } = "deepseek-chat";
     public string AiBaseUrl { get; set; } = "https://api.deepseek.com";
+
+    // ---- Floating window ----
+    public double FloatScale { get; set; } = 1.0;
+    public double FloatOpacity { get; set; } = 0.95;
 
     // ---- Session flags (not shown in settings) ----
     public bool FirstLaunch { get; set; } = true;

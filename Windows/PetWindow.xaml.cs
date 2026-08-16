@@ -1,8 +1,11 @@
 using System;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using DeskPet.Models;
 using DeskPet.Services;
 
 namespace DeskPet.Shell;
@@ -11,12 +14,15 @@ public partial class PetWindow : Window
 {
     public static PetWindow Instance { get; } = new();
 
-    private const double PanelHeight = 78;
+    private const double PanelHeight = 110;
+    private const double MinPanelWidth = 160;
     private const double DragThreshold = 3;
+    private const int WmNcHitTest = 0x0084;
+    private const int HtTransparent = -1;
 
     private Point _pressPoint;
     private Point _pressScreen;
-    private DateTime _pressTime;
+    private DateTime _lastClickTime = DateTime.MinValue;
     private bool _pressActive;
     private bool _dragging;
     private bool _panelVisible;
@@ -30,6 +36,24 @@ public partial class PetWindow : Window
         MouseLeftButtonUp += OnMouseLeftButtonUp;
 
         PetManager.Instance.PropertyChanged += OnPetChanged;
+
+        SourceInitialized += (_, _) =>
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        };
+    }
+
+    /// <summary>When click-through is enabled, make the pet window transparent to
+    /// the mouse: clicks pass through to whatever is behind the pet.</summary>
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WmNcHitTest && AppSettings.Instance.PetClickThrough)
+        {
+            handled = true;
+            return (IntPtr)HtTransparent;
+        }
+        return IntPtr.Zero;
     }
 
     public void ShowPet()
@@ -60,13 +84,23 @@ public partial class PetWindow : Window
             case nameof(PetManager.WindowAlpha):
                 Dispatcher.Invoke(UpdateAlpha);
                 break;
+            case nameof(PetManager.LifeState):
+                Dispatcher.Invoke(UpdateAlpha);
+                break;
+            case nameof(PetManager.WindowSize):
+                Dispatcher.Invoke(() =>
+                {
+                    ApplySize();
+                    UpdatePosition();
+                });
+                break;
         }
     }
 
     private void ApplySize()
     {
         var size = PetManager.Instance.WindowSize;
-        Width = size.Width;
+        Width = Math.Max(size.Width, MinPanelWidth);
         Height = size.Height + PanelHeight;
     }
 
@@ -98,7 +132,6 @@ public partial class PetWindow : Window
     {
         _pressActive = true;
         _dragging = false;
-        _pressTime = DateTime.Now;
         _pressPoint = e.GetPosition(this);
         _pressScreen = Mouse.GetPosition(null);
         CaptureMouse();
@@ -149,20 +182,27 @@ public partial class PetWindow : Window
     private void HandleClick()
     {
         var now = DateTime.Now;
-        if (_pressTime != DateTime.MinValue && (now - _pressTime).TotalSeconds < 0.4)
+        bool isDouble = _lastClickTime != DateTime.MinValue
+                        && (now - _lastClickTime).TotalMilliseconds < 400;
+
+        if (isDouble)
         {
-            // double-click: go home / leave home
+            // Double click → go home / leave home.
+            _lastClickTime = DateTime.MinValue;
             HidePanel();
             if (PetManager.Instance.LifeState == Models.PetLifeState.AtHome)
                 PetManager.Instance.LeaveHome();
             else
                 PetManager.Instance.GoHome();
-            _pressTime = DateTime.MinValue;
         }
         else
         {
-            _pressTime = now;
-            if (_panelVisible) HidePanel();
+            // Single click → interact (poke) + open the action panel.
+            _lastClickTime = now;
+            if (_panelVisible)
+            {
+                HidePanel();
+            }
             else
             {
                 PetManager.Instance.Poke();

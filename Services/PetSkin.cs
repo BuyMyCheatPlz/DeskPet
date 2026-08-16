@@ -40,6 +40,12 @@ public sealed class PetSkin
     private readonly HashSet<string> _loading = new();
     private readonly HashSet<string> _partialLoaded = new();
 
+    /// <summary>Global throttle for background frame decoding. Without this,
+    /// prefetching many actions at once spawns dozens of parallel decode tasks
+    /// that saturate the CPU and starve the UI animation thread — the visible
+    /// "stutter" and intermittent freeze.</summary>
+    private static readonly System.Threading.SemaphoreSlim DecodeGate = new(2, 2);
+
     public Dictionary<PetAction, double> Fps { get; } = new();
     public Dictionary<PetAction, int> Loops { get; } = new();
     public Dictionary<PetAction, string> Sounds { get; } = new();
@@ -93,21 +99,30 @@ public sealed class PetSkin
     public int LoopPoint(PetAction action, int variant) =>
         _loopPoints.TryGetValue(action, out var pts) && variant >= 0 && variant < pts.Count ? pts[variant] : 0;
 
-    /// <summary>Returns cached frames for an action/variant, or null if still loading.</summary>
+    /// <summary>Returns cached frames for an action/variant, or null if still loading.
+    /// When an action is requested for the first time, decodes a short trailer
+    /// (24 frames) synchronously so animation can start playing right away, then
+    /// streams the remaining frames in the background.</summary>
     public List<BitmapSource>? Frames(PetAction action, int variant = -1)
     {
         var v = ResolveVariant(action, variant);
         if (_cache.TryGetValue(action, out var variants) && v < variants.Count && variants[v].Count > 0)
-            return variants[v];
-
-        if (_variantFiles.TryGetValue(action, out var urls) && v < urls.Count && urls[v].Count > 0)
         {
-            var key = $"{action}_{v}";
-            if (_loading.Add(key))
+            // If this variant is only partially loaded (a tiny 2-frame slice),
+            // make sure the background completion is running so it doesn't stay
+            // stuck looping 2 frames ("stutter").
+            if (_variantFiles.TryGetValue(action, out var urls) && v < urls.Count
+                && variants[v].Count < urls[v].Count)
             {
-                StartLoad(action, v, urls[v]);
+                PrepareForPlayback(action, v, urls[v]);
             }
-            // During load, fall back to another cached variant of the same action.
+            return variants[v];
+        }
+
+        if (_variantFiles.TryGetValue(action, out var u2) && v < u2.Count && u2[v].Count > 0)
+        {
+            PrepareForPlayback(action, v, u2[v]);
+            // Already requested/loading — return whatever trailer/cached frames we have.
             if (_cache.TryGetValue(action, out var existing))
             {
                 foreach (var e in existing) if (e.Count > 0) return e;
@@ -116,6 +131,48 @@ public sealed class PetSkin
         }
 
         return FallbackFrames(action);
+    }
+
+    /// <summary>Decodes all remaining frames of an action variant in the
+    /// background, throttled by a global gate so it can't starve the UI thread.</summary>
+    private async Task CompleterLoad(PetAction action, int variant, List<string> urls)
+    {
+        var key = $"{action}_{variant}";
+        var maxPixel = MaxPixelSize;
+        try
+        {
+            await DecodeGate.WaitAsync().ConfigureAwait(false);
+            await Task.Run(() =>
+            {
+                var images = new BitmapSource?[urls.Count];
+                var sigs = new float[urls.Count][];
+                var opts = new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 2 };
+                System.Threading.Tasks.Parallel.For(0, urls.Count, opts, i =>
+                {
+                    images[i] = DecodeDownscaled(urls[i], maxPixel);
+                    sigs[i] = FrameSignature(urls[i]);
+                });
+                var present = images.Where(x => x != null).Cast<BitmapSource>().ToList();
+                var loop = ComputeLoopPoint(sigs.ToList());
+                if (present.Count == 0) return;
+                // Post back to UI thread without blocking the background thread.
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    Store(action, variant, present, loop);
+                    _loading.Remove(key);
+                    _partialLoaded.Remove(key);
+                });
+            }).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Never let a background decode failure take down the app.
+            Application.Current?.Dispatcher.BeginInvoke(() => _loading.Remove(key));
+        }
+        finally
+        {
+            DecodeGate.Release();
+        }
     }
 
     public void Prefetch(IEnumerable<PetAction> actions)
@@ -128,20 +185,63 @@ public sealed class PetSkin
                 for (int vi = 0; vi < variants.Count; vi++)
                 {
                     if (variants[vi].Count == 0) continue;
-                    if (_cache.TryGetValue(action, out var c) && vi < c.Count && c[vi].Count > 0) continue;
-                    var key = $"{action}_{vi}";
-                    if (_loading.Add(key)) StartLoad(action, vi, variants[vi]);
+                    // Skip only if FULLY loaded; otherwise a partial (2-frame) slice
+                    // would be left forever at 2 frames → visible 2-frame stutter.
+                    if (IsFullyCached(action, vi, variants[vi].Count)) continue;
+                    PrepareForPlayback(action, vi, variants[vi]);
                 }
             }
             else
             {
                 var first = variants.FirstOrDefault(u => u.Count > 0);
                 if (first == null) continue;
-                if (_cache.TryGetValue(action, out var c) && c.Count > 0 && c[0].Count > 0) continue;
-                var key = $"{action}_0";
-                if (_loading.Add(key)) StartLoad(action, 0, first);
+                if (IsFullyCached(action, 0, first.Count)) continue;
+                PrepareForPlayback(action, 0, first);
             }
         }
+    }
+
+    /// <summary>True when the variant's cache holds the complete frame set.</summary>
+    private bool IsFullyCached(PetAction action, int variant, int total)
+    {
+        return _cache.TryGetValue(action, out var c)
+            && variant < c.Count
+            && c[variant].Count >= total;
+    }
+
+    /// <summary>Prepares an action variant for playback. Synchronously decodes a
+    /// small slice (up to 8 frames) so the pet has an immediate frame / short loop,
+    /// then completes the full set in the background without blocking the UI thread.</summary>
+    private void PrepareForPlayback(PetAction action, int variant, List<string> urls)
+    {
+        var key = $"{action}_{variant}";
+        if (!_loading.Add(key)) return;
+
+        // Sync a tiny slice (2 frames) so the pet is never blank. Keep this small
+        // — sync decode runs on the UI thread and would otherwise cause a visible
+        // hitch every time a new action starts. The full set streams in the
+        // background.
+        int slice = Math.Min(2, urls.Count);
+        var sliceFrames = new List<BitmapSource>();
+        for (int i = 0; i < slice; i++)
+        {
+            var img = DecodeDownscaled(urls[i], MaxPixelSize);
+            if (img != null) sliceFrames.Add(img);
+        }
+        if (sliceFrames.Count > 0)
+        {
+            if (!_cache.TryGetValue(action, out var c))
+            {
+                c = new List<List<BitmapSource>>();
+                _cache[action] = c;
+            }
+            while (c.Count <= variant) c.Add(new List<BitmapSource>());
+            if (c[variant].Count == 0) c[variant] = sliceFrames;
+        }
+
+        // Stream the whole thing (trailer replaced with full set later).
+        _partialLoaded.Add(key);
+        _ = CompleterLoad(action, variant, urls);
     }
 
     public int? PreferredVariant(PetAction action)
@@ -156,12 +256,30 @@ public sealed class PetSkin
         return Random.Shared.Next(variants.Count);
     }
 
+    /// <summary>Whether every variant of an action already has frames cached.
+    /// Used to avoid switching between idle variants that would force a decode
+    /// (which causes visual jumps).</summary>
+    public bool AllVariantsCached(PetAction action)
+    {
+        if (!_variantFiles.TryGetValue(action, out var variants)) return true;
+        if (!_cache.TryGetValue(action, out var c)) return false;
+        for (int i = 0; i < variants.Count; i++)
+            if (i >= c.Count || c[i].Count == 0) return false;
+        return true;
+    }
+
     public void MarkPlayed(PetAction action)
     {
-        // Simplify vs. the Swift version: keep core + current, evict the rest.
+        // Only evict one-shot, low-frequency actions so their frames don't pile up
+        // (e.g. happy/hurt/yawn). Loop actions like walk/drag/idle/sleep must stay
+        // cached — deleting them on every action switch made the pet re-decode the
+        // whole animation each time it walked, which looked like it kept snapping
+        // back to a default pose. Memory is reclaimed only when the pet goes home
+        // (TrimToHomeOnly).
+        var oneShot = new HashSet<PetAction> { PetAction.Eat, PetAction.Happy, PetAction.Hurt, PetAction.Yawn };
         foreach (var key in _cache.Keys.ToList())
         {
-            if (key != action && !CoreActions.Contains(key)) _cache.Remove(key);
+            if (key != action && oneShot.Contains(key)) _cache.Remove(key);
         }
     }
 
@@ -171,31 +289,6 @@ public sealed class PetSkin
         {
             if (key != PetAction.Home && key != PetAction.Fall) _cache.Remove(key);
         }
-    }
-
-    private void StartLoad(PetAction action, int variant, List<string> urls)
-    {
-        var key = $"{action}_{variant}";
-        var maxPixel = MaxPixelSize;
-        Task.Run(() =>
-        {
-            var images = new List<BitmapSource>();
-            var sigs = new List<float[]>();
-            foreach (var url in urls)
-            {
-                var img = DecodeDownscaled(url, maxPixel);
-                if (img != null) images.Add(img);
-                sigs.Add(FrameSignature(url));
-            }
-            var loop = ComputeLoopPoint(sigs);
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                _loading.Remove(key);
-                if (images.Count == 0) return;
-                Store(action, variant, images, loop);
-                if (images.Count < urls.Count) _partialLoaded.Add(key);
-            });
-        });
     }
 
     private void Store(PetAction action, int variant, List<BitmapSource> images, int loop)
@@ -360,6 +453,52 @@ public sealed class PetSkin
 
     public static string ImportedModelsRoot =>
         Path.Combine(DefaultSkinDirectory, "imported");
+
+    /// <summary>Folder holding bundled skin packs, next to the application exe
+    /// (published from the project's Skins/ directory).</summary>
+    public static string BundledSkinsRoot =>
+        Path.Combine(AppContext.BaseDirectory, "Skins");
+
+    /// <summary>
+    /// On first run, copy any skin packs bundled in the app's Skins/ directory
+    /// into the user's imported skin folder so they are immediately available.
+    /// </summary>
+    public static void SyncBundledSkins()
+    {
+        try
+        {
+            if (!Directory.Exists(BundledSkinsRoot)) return;
+            Directory.CreateDirectory(ImportedModelsRoot);
+            foreach (var pack in Directory.GetDirectories(BundledSkinsRoot))
+            {
+                var name = Path.GetFileName(pack);
+                if (HasAnyFrames(pack))
+                {
+                    var target = Path.Combine(ImportedModelsRoot, name);
+                    if (!Directory.Exists(target))
+                    {
+                        CopyDirectoryContent(pack, target);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignore — skin sync is best-effort
+        }
+    }
+
+    private static void CopyDirectoryContent(string src, string dst)
+    {
+        Directory.CreateDirectory(dst);
+        foreach (var f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+        {
+            var rel = f.Substring(src.Length).TrimStart('\\', '/');
+            var destFile = Path.Combine(dst, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
+            File.Copy(f, destFile, true);
+        }
+    }
 
     /// <summary>Lists available pet model names (built-in + imported).</summary>
     public static List<string> GetAvailableModels()
@@ -579,6 +718,15 @@ public sealed class PetSkin
         foreach (var kv in loops) skin.Loops[kv.Key] = kv.Value;
         foreach (var kv in sounds) skin.Sounds[kv.Key] = kv.Value;
 
+        // Apply per-action speed multipliers from settings.
+        foreach (var (name, mult) in AppSettings.Instance.ActionSpeed)
+        {
+            if (Enum.TryParse<PetAction>(name, true, out var act) && mult > 0 && skin.Fps.ContainsKey(act))
+            {
+                skin.Fps[act] *= mult;
+            }
+        }
+
         // Synchronously load idle variant 0 trailer so the pet shows immediately.
         if (variantFiles.TryGetValue(PetAction.Idle, out var idleVariants) && idleVariants.Count > 0)
         {
@@ -667,7 +815,37 @@ public sealed class PetSkin
         public int Compare(string? x, string? y)
         {
             if (x == null || y == null) return string.CompareOrdinal(x, y);
-            return string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+            // Natural sort: compare digit runs as numbers so "2.png" < "10.png".
+            int i = 0, j = 0;
+            while (i < x.Length && j < y.Length)
+            {
+                char cx = x[i], cy = y[j];
+                if (char.IsDigit(cx) && char.IsDigit(cy))
+                {
+                    // Skip leading zeros, compare numeric value.
+                    int si = i, sj = j;
+                    while (i < x.Length && char.IsDigit(x[i])) i++;
+                    while (j < y.Length && char.IsDigit(y[j])) j++;
+                    long nx = ParseDigits(x, si, i);
+                    long ny = ParseDigits(y, sj, j);
+                    if (nx != ny) return nx < ny ? -1 : 1;
+                    // Equal numeric value: shorter (fewer leading zeros) first.
+                    if (i - si != j - sj) return (i - si) < (j - sj) ? -1 : 1;
+                }
+                else
+                {
+                    if (cx != cy) return cx < cy ? -1 : 1;
+                    i++; j++;
+                }
+            }
+            return (x.Length - i) - (y.Length - j);
+        }
+
+        private static long ParseDigits(string s, int start, int end)
+        {
+            long v = 0;
+            for (int k = start; k < end; k++) v = v * 10 + (s[k] - '0');
+            return v;
         }
     }
 }

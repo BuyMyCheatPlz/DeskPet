@@ -225,8 +225,13 @@ public sealed class PetManager : INotifyPropertyChanged
                 {
                     pos.Y = landY;
                     WindowPosition = pos;
-                    _fallTargetY = null;
-                    Land();
+                    // Only clear the custom landing point once the pet actually
+                    // settles on the ground — otherwise a bounce (which keeps the
+                    // Falling mode) would fall back to the floor line.
+                    if (PetMovementMode.Floor == _movementMode)
+                        _fallTargetY = null;
+                    else
+                        Land();
                 }
                 else
                 {

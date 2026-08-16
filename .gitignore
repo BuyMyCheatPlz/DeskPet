@@ -8,9 +8,6 @@ publish/
 dist/*.exe
 dist/*.zip
 
-# Large bundled skin packs (distributed via publish, not committed to git)
-Skins/
-
 # IDE
 .vs/
 .idea/

@@ -71,6 +71,8 @@ public sealed class PetManager : INotifyPropertyChanged
     private double _fallVelocity;
     private double? _fallTargetY; // where the out-of-home drop should land (null = bottom of screen)
     private const double WalkSpeed = 70;
+    private const double FleeSpeed = 450;   // click-through dodge is much faster
+    private bool _fleeing;
     private const double Tick = 1.0 / 60.0;
 
     private PetManager()
@@ -190,11 +192,14 @@ public sealed class PetManager : INotifyPropertyChanged
                     double dx = target.X - position.X;
                     double dy = target.Y - position.Y;
                     double distance = Math.Sqrt(dx * dx + dy * dy);
-                    double step = WalkSpeed * Tick;
+                    // Fleeing (click-through) moves much faster than normal walking.
+                    double speed = _fleeing ? FleeSpeed : WalkSpeed;
+                    double step = speed * Tick;
                     if (distance <= step)
                     {
                         WindowPosition = target;
                         _walkTarget = null;
+                        _fleeing = false;
                         if (_movingHome)
                         {
                             // Arrived at the tray corner — fade out and go home.
@@ -438,14 +443,28 @@ public sealed class PetManager : INotifyPropertyChanged
         // head left; if on the left half, head right — clamped to the work area.
         bool cursorRight = cursor.X >= current.X + size.Width / 2;
         double targetX = cursorRight
-            ? Math.Max(minX, current.X - margin * 2)   // 往左躲
-            : Math.Min(maxX, current.X + margin * 2);  // 往右躲
+            ? Math.Max(minX, current.X - size.Width * 2)   // 往左躲（远离光标）
+            : Math.Min(maxX, current.X + size.Width * 2);  // 往右躲
+        if (Math.Abs(targetX - current.X) < size.Width * 0.1) return;
 
-        var target = new Point(targetX, current.Y);
-        if (Math.Abs(target.X - current.X) < size.Width * 0.1) return;
-        _walkTarget = target;
-        UpdateFacing(target);
+        _walkTarget = new Point(targetX, current.Y);
+        _fleeing = true;
+        UpdateFacing(_walkTarget.Value);
         SetAction(PetAction.Walk);
+    }
+
+    /// <summary>Cancel an active click-through dodge (e.g. the cursor left the
+    /// model). Stops the high-speed movement cleanly.</summary>
+    public void CancelFlee()
+    {
+        if (!_fleeing) return;
+        _fleeing = false;
+        _walkTarget = null;
+        if (_lifeState == PetLifeState.Roaming && _movementMode == PetMovementMode.Floor && !_isDragging)
+        {
+            SetAction(PetAction.Idle);
+            ResetIdleCounter();
+        }
     }
 
     private void StartSleeping()

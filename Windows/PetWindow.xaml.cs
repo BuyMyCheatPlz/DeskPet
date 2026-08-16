@@ -47,17 +47,19 @@ public partial class PetWindow : Window
         };
 
         // Poll the cursor while in click-through so the pet clears the mouse
-        // instead of sitting under it.
+        // instead of sitting under it. ~16ms to react quickly during fast mouse
+        // movement (e.g. games).
         _cursorTimer = new System.Windows.Threading.DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(60),
+            Interval = TimeSpan.FromMilliseconds(16),
         };
         _cursorTimer.Tick += (_, _) => CursorSweepTick();
         _cursorTimer.Start();
     }
 
-    /// <summary>When click-through is enabled and the cursor is over the model,
-    /// tell the pet to walk away from the mouse continuously.</summary>
+    /// <summary>When click-through is enabled and the cursor is over (or near) the
+    /// model, tell the pet to walk away from the mouse immediately and fast.
+    /// Stops as soon as the cursor leaves the padded area.</summary>
     private void CursorSweepTick()
     {
         if (!AppSettings.Instance.PetClickThrough) return;
@@ -66,17 +68,21 @@ public partial class PetWindow : Window
         var cursor = System.Windows.Input.Mouse.GetPosition(null);   // screen coords
         var pet = PetManager.Instance;
         var size = pet.WindowSize;
-        // Model area in screen coords. WindowPosition.Y IS the model's top edge
-        // (the pet window's transparent action panel sits above it), so the hit
-        // rect spans [pos.Y, pos.Y + height], full model height.
+        // Model area in screen coords padded ~50px so the pet dodges early,
+        // before a fast-moving cursor actually lands on it.
+        double pad = 50;
         var rect = new System.Windows.Rect(
-            pet.WindowPosition.X,
-            pet.WindowPosition.Y,
-            Math.Max(size.Width, 160),
-            size.Height);
+            pet.WindowPosition.X - pad,
+            pet.WindowPosition.Y - pad,
+            Math.Max(size.Width, 160) + pad * 2,
+            size.Height + pad * 2);
         if (rect.Contains(cursor))
         {
             pet.FleeFromMouse(cursor);
+        }
+        else
+        {
+            pet.CancelFlee();
         }
     }
 

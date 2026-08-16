@@ -516,13 +516,13 @@ public sealed class PetManager : INotifyPropertyChanged
         var size = WindowSize;
         var p = ResolveHomePoint();
         _movementMode = PetMovementMode.Floor;
-        // Emerge at the floating window, then drop 25% of the work-area height.
-        // If that would land past the bottom (float window below the 3/4 mark),
+        // Emerge at the floating window, then drop to 1/3 of the work-area
+        // height. If that would land past the bottom (float window too low),
         // clamp the landing to the floor instead.
         double startY = p.Y - size.Height / 2;
         WindowPosition = new Point(p.X - size.Width / 2, startY);
         double floorY = WorkArea.Bottom - size.Height * 0.06;
-        _fallTargetY = Math.Min(startY + WorkArea.Height * 0.25, floorY);
+        _fallTargetY = Math.Min(startY + WorkArea.Height * 0.3333, floorY);
         WindowAlpha = 1;
         _movingHome = false;
         _fading = false;

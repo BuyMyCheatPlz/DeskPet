@@ -27,6 +27,7 @@ public partial class PetWindow : Window
     private bool _dragging;
     private bool _panelVisible;
     private bool _shown;
+    private System.Windows.Threading.DispatcherTimer? _cursorTimer;
 
     private PetWindow()
     {
@@ -44,6 +45,36 @@ public partial class PetWindow : Window
             NativeWindow.HideFromAltTab(this);   // 不显示在 Alt+Tab / 任务栏
             ApplyClickThrough();                 // 应用鼠标穿透扩展样式
         };
+
+        // Poll the cursor while in click-through so the pet clears the mouse
+        // instead of sitting under it.
+        _cursorTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(60),
+        };
+        _cursorTimer.Tick += (_, _) => CursorSweepTick();
+        _cursorTimer.Start();
+    }
+
+    /// <summary>When click-through is enabled and the cursor is over the model,
+    /// tell the pet to walk away from the mouse continuously.</summary>
+    private void CursorSweepTick()
+    {
+        if (!AppSettings.Instance.PetClickThrough) return;
+        if (!IsVisible || PetManager.Instance.LifeState != PetLifeState.Roaming) return;
+
+        var cursor = System.Windows.Input.Mouse.GetPosition(null);   // screen coords
+        var pet = PetManager.Instance;
+        var size = pet.WindowSize;
+        // Model area in screen coords (pet window = model + panel above).
+        double panel = 110;
+        double left = pet.WindowPosition.X;
+        double top = pet.WindowPosition.Y - panel;
+        var rect = new System.Windows.Rect(left, top, Math.Max(size.Width, 160), size.Height * 0.9);
+        if (rect.Contains(cursor))
+        {
+            pet.FleeFromMouse(cursor);
+        }
     }
 
     private void ApplyClickThrough()

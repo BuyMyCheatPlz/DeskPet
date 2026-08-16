@@ -417,6 +417,36 @@ public sealed class PetManager : INotifyPropertyChanged
         SetAction(PetAction.Walk);
     }
 
+    /// <summary>Walk away from the given screen-space cursor point, staying on the
+    /// same floor line. Used by click-through so the pet clears the mouse instead
+    /// of sitting under it.</summary>
+    public void FleeFromMouse(Point cursor)
+    {
+        if (_lifeState != PetLifeState.Roaming || _isDragging || _movementMode != PetMovementMode.Floor)
+            return;
+
+        var wa = WorkArea;
+        var size = WindowSize;
+        var current = _windowPosition;
+
+        double margin = size.Width * 0.5;
+        double minX = wa.Left + margin;
+        double maxX = wa.Right - margin - size.Width;
+        if (maxX <= minX) return;
+
+        // Aim at the edge on the opposite side of the cursor, clamped to the work area.
+        double dir = cursor.X >= current.X + size.Width / 2 ? -1 : 1;
+        double targetX = dir > 0
+            ? Math.Max(minX, current.X - margin * 2)
+            : Math.Min(maxX, current.X + margin * 2);
+
+        var target = new Point(targetX, current.Y);
+        if (Math.Abs(target.X - current.X) < size.Width * 0.1) return;
+        _walkTarget = target;
+        UpdateFacing(target);
+        SetAction(PetAction.Walk);
+    }
+
     private void StartSleeping()
     {
         _walkTarget = null;

@@ -584,7 +584,16 @@ public sealed class PetManager : INotifyPropertyChanged
     private void StatTick()
     {
         double speed = AppSettings.Instance.PetStatDecaySpeed;
-        Cleanliness = Math.Max(0, _cleanliness - 0.8 * speed);
+        double decay = 0.8 * speed;
+        if (_lifeState == PetLifeState.AtHome)
+        {
+            // 回巢后清洁：以下降速度的 5 倍上升，逐步恢复到 100
+            Cleanliness = Math.Min(100, _cleanliness + decay * 5);
+        }
+        else
+        {
+            Cleanliness = Math.Max(0, _cleanliness - decay);
+        }
         Happiness = Math.Min(100, Math.Max(0, _happiness + (50 - _happiness) * 0.04));
     }
 

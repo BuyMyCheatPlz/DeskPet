@@ -434,11 +434,12 @@ public sealed class PetManager : INotifyPropertyChanged
         double maxX = wa.Right - margin - size.Width;
         if (maxX <= minX) return;
 
-        // Aim at the edge on the opposite side of the cursor, clamped to the work area.
-        double dir = cursor.X >= current.X + size.Width / 2 ? -1 : 1;
-        double targetX = dir > 0
-            ? Math.Max(minX, current.X - margin * 2)
-            : Math.Min(maxX, current.X + margin * 2);
+        // Aim away from the cursor: if the cursor is on the model's right half,
+        // head left; if on the left half, head right — clamped to the work area.
+        bool cursorRight = cursor.X >= current.X + size.Width / 2;
+        double targetX = cursorRight
+            ? Math.Max(minX, current.X - margin * 2)   // 往左躲
+            : Math.Min(maxX, current.X + margin * 2);  // 往右躲
 
         var target = new Point(targetX, current.Y);
         if (Math.Abs(target.X - current.X) < size.Width * 0.1) return;

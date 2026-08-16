@@ -66,11 +66,14 @@ public partial class PetWindow : Window
         var cursor = System.Windows.Input.Mouse.GetPosition(null);   // screen coords
         var pet = PetManager.Instance;
         var size = pet.WindowSize;
-        // Model area in screen coords (pet window = model + panel above).
-        double panel = 110;
-        double left = pet.WindowPosition.X;
-        double top = pet.WindowPosition.Y - panel;
-        var rect = new System.Windows.Rect(left, top, Math.Max(size.Width, 160), size.Height * 0.9);
+        // Model area in screen coords. WindowPosition.Y IS the model's top edge
+        // (the pet window's transparent action panel sits above it), so the hit
+        // rect spans [pos.Y, pos.Y + height], full model height.
+        var rect = new System.Windows.Rect(
+            pet.WindowPosition.X,
+            pet.WindowPosition.Y,
+            Math.Max(size.Width, 160),
+            size.Height);
         if (rect.Contains(cursor))
         {
             pet.FleeFromMouse(cursor);

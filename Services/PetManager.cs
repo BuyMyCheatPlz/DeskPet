@@ -70,7 +70,6 @@ public sealed class PetManager : INotifyPropertyChanged
     private PetMovementMode _movementMode = PetMovementMode.Floor;
     private double _fallVelocity;
     private double? _fallTargetY; // where the out-of-home drop should land (null = bottom of screen)
-    private bool _settleOnLand;   // leave-home: stop dead on first impact (no bounce)
     private const double WalkSpeed = 70;
     private const double Tick = 1.0 / 60.0;
 
@@ -454,18 +453,10 @@ public sealed class PetManager : INotifyPropertyChanged
 
     private void Land()
     {
-        // Leave-home drops stop dead on the first impact (no bounce).
-        if (_settleOnLand)
-        {
-            _settleOnLand = false;
-            _fallVelocity = 0;
-            _movementMode = PetMovementMode.Floor;
-            LifeState = PetLifeState.Roaming;
-            return;
-        }
-
         if (Math.Abs(_fallVelocity) > 300)
         {
+            // Damped bounce at the landing point: reverse a fraction of the speed
+            // and keep falling so the next impact is gentler, until it settles.
             _fallVelocity = -_fallVelocity * 0.25;
         }
         else
@@ -532,7 +523,6 @@ public sealed class PetManager : INotifyPropertyChanged
         WindowPosition = new Point(p.X - size.Width / 2, startY);
         double floorY = WorkArea.Bottom - size.Height * 0.06;
         _fallTargetY = Math.Min(startY + WorkArea.Height * 0.25, floorY);
-        _settleOnLand = true;      // stop on the first impact, don't bounce
         WindowAlpha = 1;
         _movingHome = false;
         _fading = false;

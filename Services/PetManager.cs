@@ -437,7 +437,8 @@ public sealed class PetManager : INotifyPropertyChanged
         double margin = size.Width * 0.5;
         double minX = wa.Left + margin;
         double maxX = wa.Right - margin - size.Width;
-        if (maxX <= minX) return;
+        if (maxX <= minX)
+            return;
 
         // Aim away from the cursor: if the cursor is on the model's right half,
         // head left; if on the left half, head right — clamped to the work area.
@@ -445,7 +446,8 @@ public sealed class PetManager : INotifyPropertyChanged
         double targetX = cursorRight
             ? Math.Max(minX, current.X - size.Width * 2)   // 往左躲（远离光标）
             : Math.Min(maxX, current.X + size.Width * 2);  // 往右躲
-        if (Math.Abs(targetX - current.X) < size.Width * 0.1) return;
+        if (Math.Abs(targetX - current.X) < size.Width * 0.1)
+            return;
 
         _walkTarget = new Point(targetX, current.Y);
         _fleeing = true;

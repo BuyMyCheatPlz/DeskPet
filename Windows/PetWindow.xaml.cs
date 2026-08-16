@@ -65,7 +65,13 @@ public partial class PetWindow : Window
         if (!AppSettings.Instance.PetClickThrough) return;
         if (!IsVisible || PetManager.Instance.LifeState != PetLifeState.Roaming) return;
 
-        var cursor = System.Windows.Input.Mouse.GetPosition(null);   // screen coords
+        // Use Win32 GetCursorPos (physical px) converted to DIP so it matches
+        // WindowPosition's coordinate space. Mouse.GetPosition(null) returns
+        // (0,0) on this transparent window, which makes the hit test never fire.
+        bool ok = NativeWindow.TryGetCursorPos(out int px, out int py);
+        double sx = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        double sy = VisualTreeHelper.GetDpi(this).DpiScaleY;
+        var cursor = ok ? new Point(px / sx, py / sy) : new Point(0, 0);
         var pet = PetManager.Instance;
         var size = pet.WindowSize;
         // Model area in screen coords padded ~50px so the pet dodges early,

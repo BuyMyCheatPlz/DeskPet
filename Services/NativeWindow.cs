@@ -22,6 +22,13 @@ public static class NativeWindow
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
     private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out NativePoint lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint { public int X; public int Y; }
+
     /// <summary>Mark the window as a tool window so it no longer appears in
     /// Alt+Tab or the taskbar. Call once the HWND exists (SourceInitialized).</summary>
     public static void HideFromAltTab(Window window)
@@ -46,5 +53,13 @@ public static class NativeWindow
         if (enabled) ex |= WsExTransparent;
         else ex &= ~WsExTransparent;
         SetWindowLongPtr(hwnd, GwlExStyle, new IntPtr(ex));
+    }
+
+    /// <summary>Get the cursor position in physical (device) pixels. Returns false
+    /// if unavailable.</summary>
+    public static bool TryGetCursorPos(out int x, out int y)
+    {
+        if (GetCursorPos(out var p)) { x = p.X; y = p.Y; return true; }
+        x = 0; y = 0; return false;
     }
 }

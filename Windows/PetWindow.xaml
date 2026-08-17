@@ -58,34 +58,28 @@
                RenderTransformOrigin="0.5,0.5"
                Cursor="Hand" />
 
-        <!-- Speech bubble: shows AI replies above the pet's head. -->
-        <Border x:Name="SpeechBubble"
-                Grid.Row="1"
+        <!-- Speech bubble (cloud-shaped): shows AI replies above the pet's head.
+             Lives in Row 0 (the transparent strip above the pet) so it never
+             covers the model. -->
+        <Canvas x:Name="SpeechBubble"
+                Grid.Row="0"
+                Width="300" Height="118"
+                Margin="0,0,0,6"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                Margin="0,2,0,0"
-                MaxWidth="300"
-                Visibility="Collapsed"
-                Background="#F21E1E22"
-                CornerRadius="12"
-                BorderBrush="#55FFFFFF"
-                BorderThickness="1"
-                IsHitTestVisible="False">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.45" />
-            </Border.Effect>
-            <StackPanel>
-                <TextBlock x:Name="SpeechText"
-                           Foreground="White"
-                           FontSize="12"
-                           TextWrapping="Wrap"
-                           Padding="10,7"
-                           Text="…" />
-                <Path Width="16" Height="8" Fill="#F21E1E22"
-                      Data="M 0,0 L 16,0 L 8,8 Z"
-                      HorizontalAlignment="Center" VerticalAlignment="Top"
-                      Stretch="Fill" />
-            </StackPanel>
-        </Border>
+                VerticalAlignment="Bottom"
+                IsHitTestVisible="False"
+                Visibility="Collapsed">
+            <Canvas.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.5" />
+            </Canvas.Effect>
+            <!-- Cloud body: overlapping ellipses + a lid/base to form a cloud outline. -->
+            <Path Data="M 18,96 C 6,96 4,84 16,76 C 8,70 12,56 30,58 C 34,44 56,36 74,46 C 88,32 118,36 122,54 C 138,56 140,76 126,82 C 136,94 122,100 108,99 L 76,114 L 40,99 C 28,100 22,94 18,96 Z"
+                  Fill="#FF23272F" Stroke="#66FFFFFF" StrokeThickness="1.5" IsHitTestVisible="False"/>
+            <!-- Text sits centered inside the cloud -->
+            <TextBlock x:Name="SpeechText"
+                       Canvas.Left="24" Canvas.Top="30" Width="252"
+                       Foreground="White" FontSize="12" TextWrapping="Wrap"
+                       TextAlignment="Center" Text="…" IsHitTestVisible="False"/>
+        </Canvas>
     </Grid>
 </Window>

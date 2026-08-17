@@ -57,5 +57,35 @@
                Stretch="Uniform"
                RenderTransformOrigin="0.5,0.5"
                Cursor="Hand" />
+
+        <!-- Speech bubble: shows AI replies above the pet's head. -->
+        <Border x:Name="SpeechBubble"
+                Grid.Row="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,2,0,0"
+                MaxWidth="300"
+                Visibility="Collapsed"
+                Background="#F21E1E22"
+                CornerRadius="12"
+                BorderBrush="#55FFFFFF"
+                BorderThickness="1"
+                IsHitTestVisible="False">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.45" />
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock x:Name="SpeechText"
+                           Foreground="White"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Padding="10,7"
+                           Text="…" />
+                <Path Width="16" Height="8" Fill="#F21E1E22"
+                      Data="M 0,0 L 16,0 L 8,8 Z"
+                      HorizontalAlignment="Center" VerticalAlignment="Top"
+                      Stretch="Fill" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

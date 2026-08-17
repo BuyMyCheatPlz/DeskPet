@@ -28,6 +28,7 @@ public partial class PetWindow : Window
     private bool _panelVisible;
     private bool _shown;
     private System.Windows.Threading.DispatcherTimer? _cursorTimer;
+    private System.Windows.Threading.DispatcherTimer? _speechTimer;
 
     private PetWindow()
     {
@@ -112,6 +113,36 @@ public partial class PetWindow : Window
             }
         }
         return IntPtr.Zero;
+    }
+
+    /// <summary>Show a speech bubble above the pet's head (used for AI replies).
+    /// Auto-hides after a few seconds; calling again refreshes the text and timer.</summary>
+    public static void ShowSpeechBubble(string text)
+    {
+        Instance.ShowSpeechBubbleCore(text);
+    }
+
+    private void ShowSpeechBubbleCore(string text)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            SpeechText.Text = text ?? "";
+            SpeechBubble.Visibility = Visibility.Visible;
+            if (_speechTimer == null)
+            {
+                _speechTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(6),
+                };
+                _speechTimer.Tick += (_, _) =>
+                {
+                    _speechTimer.Stop();
+                    SpeechBubble.Visibility = Visibility.Collapsed;
+                };
+            }
+            _speechTimer.Stop();
+            _speechTimer.Start();
+        });
     }
 
     // Re-apply the click-through style once the extra style has been set, so

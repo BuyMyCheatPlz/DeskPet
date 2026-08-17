@@ -74,6 +74,8 @@ public partial class ChatWindow : Window
             RemoveTyping();
             AddBubble(reply, isUser: false);
             _history.Add(new AIChatService.ChatMessage("assistant", reply));
+            // Show the AI reply as a speech bubble above the pet.
+            DeskPet.Shell.PetWindow.ShowSpeechBubble(reply);
         }
         catch (Exception ex)
         {

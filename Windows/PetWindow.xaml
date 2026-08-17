@@ -59,29 +59,40 @@
                Cursor="Hand" />
 
         <!-- Speech bubble (cloud-shaped): shows AI replies above the pet's head.
-             Lives in Row 0 (the transparent strip above the pet) so it never
-             covers the model. Wrapped in a Viewbox so the cloud scales down to
-             fit the window width instead of being clipped on the right. -->
-        <Viewbox x:Name="SpeechBubbleHost"
-                 Grid.Row="0"
-                 VerticalAlignment="Bottom"
-                 HorizontalAlignment="Center"
-                 Stretch="Uniform"
-                 Visibility="Collapsed">
-            <Canvas x:Name="SpeechBubble"
-                    Width="300" Height="118"
-                    IsHitTestVisible="False">
-                <Canvas.Effect>
-                    <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.5" />
-                </Canvas.Effect>
-                <!-- Cloud body -->
-                <Path Data="M 18,96 C 6,96 4,84 16,76 C 8,70 12,56 30,58 C 34,44 56,36 74,46 C 88,32 118,36 122,54 C 138,56 140,76 126,82 C 136,94 122,100 108,99 L 76,114 L 40,99 C 28,100 22,94 18,96 Z"
-                      Fill="#FF23272F" Stroke="#66FFFFFF" StrokeThickness="1.5" IsHitTestVisible="False"/>
-                <TextBlock x:Name="SpeechText"
-                           Canvas.Left="24" Canvas.Top="30" Width="252"
-                           Foreground="White" FontSize="12" TextWrapping="Wrap"
-                           TextAlignment="Center" Text="…" IsHitTestVisible="False"/>
-            </Canvas>
-        </Viewbox>
+             Lives in Row 0 (transparent strip above the pet) so it never covers
+             the model. Self-sizes to its content at normal font size, centered. -->
+        <Grid x:Name="SpeechBubble"
+              Grid.Row="0"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Bottom"
+              Margin="6,0,6,4"
+              IsHitTestVisible="False"
+              Visibility="Collapsed">
+            <Grid.Effect>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.5" />
+            </Grid.Effect>
+            <StackPanel>
+                <!-- Cloud body: rounded bubble -->
+                <Border HorizontalAlignment="Center"
+                        Background="#FF23272F"
+                        BorderBrush="#66FFFFFF"
+                        BorderThickness="1.5"
+                        CornerRadius="18"
+                        Padding="14,9"
+                        MaxWidth="280">
+                    <TextBlock x:Name="SpeechText"
+                               Foreground="White"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Text="…" />
+                </Border>
+                <!-- Tail -->
+                <Path Width="18" Height="10" Fill="#FF23272F"
+                      Data="M 0,0 L 18,0 L 9,10 Z"
+                      HorizontalAlignment="Center" VerticalAlignment="Top"
+                      Stretch="Fill" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

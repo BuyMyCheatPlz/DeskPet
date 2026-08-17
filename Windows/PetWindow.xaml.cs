@@ -127,9 +127,8 @@ public partial class PetWindow : Window
         Dispatcher.Invoke(() =>
         {
             SpeechText.Text = text ?? "";
-            // Make the cloud fit the window width so it is not clipped on either side.
-            SpeechBubbleHost.Width = Math.Max(60, Width - 8);
-            SpeechBubbleHost.Visibility = Visibility.Visible;
+            // The bubble self-sizes to its text at normal font size, centered.
+            SpeechBubble.Visibility = Visibility.Visible;
             if (_speechTimer == null)
             {
                 _speechTimer = new System.Windows.Threading.DispatcherTimer
@@ -139,7 +138,7 @@ public partial class PetWindow : Window
                 _speechTimer.Tick += (_, _) =>
                 {
                     _speechTimer.Stop();
-                    SpeechBubbleHost.Visibility = Visibility.Collapsed;
+                    SpeechBubble.Visibility = Visibility.Collapsed;
                 };
             }
             _speechTimer.Stop();

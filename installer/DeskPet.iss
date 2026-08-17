@@ -1,10 +1,10 @@
 ; Inno Setup script for DeskPet for Windows.
 ; Build:  ISCC.exe DeskPet.iss
-; Produces: dist\DeskPet-setup-1.0.0.exe  (online bootstrap installer)
+; Produces: dist\DeskPet-setup-1.0.1.exe  (online bootstrap installer)
 
 #define MyAppName "DeskPet"
 #define MyAppNameShort "DeskPet"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "BuyMyCheatPlz"
 #define MyAppURL "https://github.com/BuyMyCheatPlz/DeskPet"
 #define MyAppExeName "DeskPet.exe"

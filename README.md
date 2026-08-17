@@ -29,6 +29,23 @@
 | 设置面板 | `Windows/SettingsWindow.xaml` | 宠物 / AI 对话 / 行为 / 动作 四个标签页，每个设置项均带中文说明 |
 | 戳一戳 vs 抚摸 | `PetManager.Poke()` / `Pet()` | 戳一戳播 `happy` 变体 0 且心情 -1（心情差则委屈），抚摸播 `happy` 变体 1 且心情 +12 |
 | 鼠标穿透时躲避光标 | `NativeWindow.TryGetCursorPos` + `PetManager.FleeFromMouse` | 开启穿透后，鼠标靠近/落到模型上，模型高速朝远离方向躲开 |
+| walk 起步/循环/移动解耦 | `PetSkin.LoopStart/MoveStart` | 起步帧只播一次、循环体不重复起步；移动起始帧与循环起始帧可分开配置 |
+| AI 回复头顶气泡 | `PetWindow.ShowSpeechBubble` | AI 对话回复时，桌宠头顶冒云朵状气泡显示文字 |
+
+## AI 对话回复气泡
+
+打开 AI 对话（托盘菜单「和宠物对话」，或单击宠物 → 面板 → 对话），发送消息后，AI 的回复除了显示在对话窗口，还会在**桌宠头顶弹出一个云朵状气泡**显示文字，约 6 秒后自动消失。气泡在模型上方（不遮挡宠物），字体与内容自适应居中。支持 DeepSeek / OpenAI / 自定义（OpenAI 兼容）接口，见"AI 对话配置"。
+
+## 动画 walk 起步段与循环
+
+`config.json` 的 `actions.<动作>` 支持两个 per-variant（按变体索引导）配置：
+- **`loopStart`**：循环起始帧（0-based）。此前帧只播放一次作为起步，此后帧进入循环。例如 `[97,102]` 表示变体 0 从帧 98 循环、变体 1 从帧 103 循环。
+- **`moveStart`**：移动起始帧（0-based）。播放到该帧后才开始移动，可与 `loopStart` 不同（例如 `walk_0` 从第 50 帧移动、但从第 98 帧才循环）。
+
+内置 `deepseek-girl` 皮肤配置：
+```json
+"walk": { "fps": 24, "loopStart": [101, 102], "moveStart": [49, 24] }
+```
 
 ## 与原版的差异（Windows 平台限制）
 

@@ -301,7 +301,12 @@ public partial class PetWindow : Window
         {
             // Single click → interact (poke) + open the action panel.
             _lastClickTime = now;
-            if (_panelVisible)
+            if (ChatBox.Visibility == Visibility.Visible)
+            {
+                // Chat open: a single click just closes chat (back to panel hidden).
+                HidePanel();
+            }
+            else if (_panelVisible)
             {
                 HidePanel();
             }
@@ -347,13 +352,28 @@ public partial class PetWindow : Window
 
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
-        // Inline chat: toggle the input box below the model instead of opening a window.
+        // Inline chat: switching to it hides the whole action panel (buttons +
+        // status bar) and leaves only the input box. Closing restores the panel.
         bool open = ChatBox.Visibility != Visibility.Visible;
         ChatBox.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-        // Hide the status bar while chatting so it hugs the pet and stays out of the way.
-        StatsText.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
-        ApplySize();
-        if (open) ChatInput.Focus();
+        if (open)
+        {
+            ActionPanel.Visibility = Visibility.Collapsed;
+            _panelVisible = false;
+            ApplySize();
+            ChatInput.Focus();
+        }
+        else
+        {
+            // Re-show the action panel (unless the pet is home).
+            if (PetManager.Instance.LifeState != Models.PetLifeState.AtHome)
+            {
+                ActionPanel.Visibility = Visibility.Visible;
+                _panelVisible = true;
+                UpdateStats();
+            }
+            ApplySize();
+        }
     }
 
     private void ChatInput_KeyDown(object sender, KeyEventArgs e)

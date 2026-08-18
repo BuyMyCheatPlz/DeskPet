@@ -17,6 +17,7 @@ public partial class PetWindow : Window
     private const double PanelHeight = 110;
     private const double MinPanelWidth = 160;
     private const double DragThreshold = 3;
+    private const double ChatReserveHeight = 150;
     private const int WmNcHitTest = 0x0084;
     private const int HtTransparent = -1;
 
@@ -201,7 +202,8 @@ public partial class PetWindow : Window
     {
         var size = PetManager.Instance.WindowSize;
         Width = Math.Max(size.Width, MinPanelWidth);
-        Height = size.Height + PanelHeight;
+        // Reserve extra height when the inline chat box below the model is shown.
+        Height = size.Height + PanelHeight + (ChatBox.Visibility == Visibility.Visible ? ChatReserveHeight : 0);
     }
 
     private void UpdatePosition()
@@ -322,7 +324,11 @@ public partial class PetWindow : Window
     {
         _panelVisible = false;
         ActionPanel.Visibility = Visibility.Collapsed;
-        ChatBox.Visibility = Visibility.Collapsed;
+        if (ChatBox.Visibility == Visibility.Visible)
+        {
+            ChatBox.Visibility = Visibility.Collapsed;
+            ApplySize();
+        }
     }
 
     private void UpdateStats()
@@ -341,16 +347,13 @@ public partial class PetWindow : Window
 
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
-        // Inline chat: toggle the input box under the panel instead of opening a window.
+        // Inline chat: toggle the input box below the model instead of opening a window.
+        ChatBox.Visibility = (ChatBox.Visibility == Visibility.Visible)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        ApplySize();
         if (ChatBox.Visibility == Visibility.Visible)
-        {
-            ChatBox.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            ChatBox.Visibility = Visibility.Visible;
             ChatInput.Focus();
-        }
     }
 
     private void ChatInput_KeyDown(object sender, KeyEventArgs e)

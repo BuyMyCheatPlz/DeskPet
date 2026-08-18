@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="110" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Border x:Name="ActionPanel"
@@ -49,35 +50,49 @@
                             Background="#33333333" Foreground="White" BorderThickness="0"
                             FontSize="11" Cursor="Hand" />
                 </StackPanel>
+            </StackPanel>
+        </Border>
 
-                <!-- Inline AI chat (replaces opening a separate ChatWindow). -->
-                <StackPanel x:Name="ChatBox" Visibility="Collapsed" Margin="0,8,0,0" MinWidth="220">
-                    <Border Background="#33111111" CornerRadius="8" Padding="8,6" Margin="0,0,0,6">
-                        <TextBlock x:Name="ChatReplyText" Foreground="White" FontSize="11"
-                                   TextWrapping="Wrap" Text="想聊点什么呢？"/>
-                    </Border>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="ChatInput" Grid.Column="0"
-                                 Background="#66000000" Foreground="White" BorderThickness="0"
-                                 Padding="6,5" FontSize="12" AcceptsReturn="True"
-                                 MaxHeight="70" VerticalScrollBarVisibility="Auto"
-                                 KeyDown="ChatInput_KeyDown" />
-                        <Button x:Name="ChatSendBtn" Grid.Column="1" Click="ChatSend_Click"
-                                Content="发送" Width="48" Height="30" Margin="6,0,0,0"
-                                Background="#FF7A5CD6" Foreground="White" BorderThickness="0"
-                                FontSize="11" Cursor="Hand" />
-                    </Grid>
-                </StackPanel>
+        <!-- Inline AI chat: input box below the model (replaces a separate window). -->
+        <Border x:Name="ChatBox"
+                Grid.Row="2"
+                Margin="6,6,6,8"
+                VerticalAlignment="Top"
+                Background="#E61C1C1E"
+                CornerRadius="12"
+                BorderBrush="#33FFFFFF"
+                BorderThickness="1"
+                Visibility="Collapsed">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="4" Opacity="0.4" />
+            </Border.Effect>
+            <StackPanel Margin="8,8">
+                <Border Background="#33111111" CornerRadius="8" Padding="8,6" Margin="0,0,0,6">
+                    <TextBlock x:Name="ChatReplyText" Foreground="White" FontSize="11"
+                               TextWrapping="Wrap" Text="想聊点什么呢？"/>
+                </Border>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="ChatInput" Grid.Column="0"
+                             Background="#66000000" Foreground="White" BorderThickness="0"
+                             Padding="6,5" FontSize="12" AcceptsReturn="True"
+                             MaxHeight="70" VerticalScrollBarVisibility="Auto"
+                             KeyDown="ChatInput_KeyDown" />
+                    <Button x:Name="ChatSendBtn" Grid.Column="1" Click="ChatSend_Click"
+                            Content="发送" Width="48" Height="30" Margin="6,0,0,0"
+                            Background="#FF7A5CD6" Foreground="White" BorderThickness="0"
+                            FontSize="11" Cursor="Hand" />
+                </Grid>
             </StackPanel>
         </Border>
 
         <Image x:Name="FrameImage"
                Grid.Row="1"
                Stretch="Uniform"
+               VerticalAlignment="Bottom"
                RenderTransformOrigin="0.5,0.5"
                Cursor="Hand" />
 

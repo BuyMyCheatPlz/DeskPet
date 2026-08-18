@@ -348,12 +348,12 @@ public partial class PetWindow : Window
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
         // Inline chat: toggle the input box below the model instead of opening a window.
-        ChatBox.Visibility = (ChatBox.Visibility == Visibility.Visible)
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        bool open = ChatBox.Visibility != Visibility.Visible;
+        ChatBox.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        // Hide the status bar while chatting so it hugs the pet and stays out of the way.
+        StatsText.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
         ApplySize();
-        if (ChatBox.Visibility == Visibility.Visible)
-            ChatInput.Focus();
+        if (open) ChatInput.Focus();
     }
 
     private void ChatInput_KeyDown(object sender, KeyEventArgs e)
@@ -375,7 +375,6 @@ public partial class PetWindow : Window
 
         _chatHistory.Add(new AIChatService.ChatMessage("user", text));
         ChatInput.Clear();
-        ChatReplyText.Text = "…";
         _chatBusy = true;
         ChatSendBtn.IsEnabled = false;
         try
@@ -384,12 +383,12 @@ public partial class PetWindow : Window
             messages.AddRange(_chatHistory);
             var reply = await AIChatService.Instance.SendAsync(messages);
             _chatHistory.Add(new AIChatService.ChatMessage("assistant", reply));
-            ChatReplyText.Text = reply;
+            // Reply shows only as the bubble above the pet's head (as before).
             PetWindow.ShowSpeechBubble(reply);
         }
         catch (Exception ex)
         {
-            ChatReplyText.Text = "⚠️ " + ex.Message;
+            PetWindow.ShowSpeechBubble("⚠️ " + ex.Message);
         }
         finally
         {

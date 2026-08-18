@@ -18,9 +18,9 @@
 
         <Border x:Name="ActionPanel"
                 Grid.Row="0"
-                VerticalAlignment="Top"
+                VerticalAlignment="Bottom"
                 HorizontalAlignment="Center"
-                Margin="0,4,0,0"
+                Margin="0,0,0,4"
                 Visibility="Collapsed"
                 Background="#E61C1C1E"
                 CornerRadius="12"
@@ -29,12 +29,11 @@
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" ShadowDepth="4" Opacity="0.4" />
             </Border.Effect>
-            <StackPanel Margin="8,8">
+            <StackPanel Margin="8,6">
                 <TextBlock x:Name="StatsText"
                            Foreground="White"
-                           FontSize="11"
+                           FontSize="10"
                            HorizontalAlignment="Center"
-                           TextWrapping="Wrap"
                            Text="😺 ❤️ 100%  ✨ 100%" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
                     <Button x:Name="PetButton" Click="PetButton_Click"
@@ -66,11 +65,7 @@
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" ShadowDepth="4" Opacity="0.4" />
             </Border.Effect>
-            <StackPanel Margin="8,8">
-                <Border Background="#33111111" CornerRadius="8" Padding="8,6" Margin="0,0,0,6">
-                    <TextBlock x:Name="ChatReplyText" Foreground="White" FontSize="11"
-                               TextWrapping="Wrap" Text="想聊点什么呢？"/>
-                </Border>
+            <StackPanel Margin="6,6">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

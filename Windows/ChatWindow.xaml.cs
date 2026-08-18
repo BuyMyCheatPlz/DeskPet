@@ -28,11 +28,6 @@ public partial class ChatWindow : Window
     private bool _busy;
     private Border? _typingBubble;
 
-    private const string SystemPrompt =
-        "You are a cute desktop pet (a small animal living on the user's desktop). " +
-        "Reply warmly, playfully and briefly (1-3 short sentences). " +
-        "You can use a few emoji. Keep the tone light and friendly.";
-
     public ChatWindow()
     {
         InitializeComponent();
@@ -68,7 +63,7 @@ public partial class ChatWindow : Window
 
         try
         {
-            var messages = new List<AIChatService.ChatMessage> { new("system", SystemPrompt) };
+            var messages = new List<AIChatService.ChatMessage> { new("system", AIChatService.SystemPrompt) };
             messages.AddRange(_history);
             var reply = await AIChatService.Instance.SendAsync(messages);
             RemoveTyping();

@@ -20,6 +20,13 @@ public sealed class AIChatService
 
     public record ChatMessage(string Role, string Content);
 
+    /// <summary>System prompt shared by both the standalone chat window and the
+    /// inline pet chat (kept in one place so tone stays consistent).</summary>
+    public const string SystemPrompt =
+        "You are a cute desktop pet (a small animal living on the user's desktop). " +
+        "Reply warmly, playfully and briefly (1-3 short sentences). " +
+        "You can use a few emoji. Keep the tone light and friendly.";
+
     private AIChatService() { }
 
     public async Task<string> SendAsync(IEnumerable<ChatMessage> messages)

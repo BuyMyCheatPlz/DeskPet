@@ -49,6 +49,29 @@
                             Background="#33333333" Foreground="White" BorderThickness="0"
                             FontSize="11" Cursor="Hand" />
                 </StackPanel>
+
+                <!-- Inline AI chat (replaces opening a separate ChatWindow). -->
+                <StackPanel x:Name="ChatBox" Visibility="Collapsed" Margin="0,8,0,0" MinWidth="220">
+                    <Border Background="#33111111" CornerRadius="8" Padding="8,6" Margin="0,0,0,6">
+                        <TextBlock x:Name="ChatReplyText" Foreground="White" FontSize="11"
+                                   TextWrapping="Wrap" Text="想聊点什么呢？"/>
+                    </Border>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ChatInput" Grid.Column="0"
+                                 Background="#66000000" Foreground="White" BorderThickness="0"
+                                 Padding="6,5" FontSize="12" AcceptsReturn="True"
+                                 MaxHeight="70" VerticalScrollBarVisibility="Auto"
+                                 KeyDown="ChatInput_KeyDown" />
+                        <Button x:Name="ChatSendBtn" Grid.Column="1" Click="ChatSend_Click"
+                                Content="发送" Width="48" Height="30" Margin="6,0,0,0"
+                                Background="#FF7A5CD6" Foreground="White" BorderThickness="0"
+                                FontSize="11" Cursor="Hand" />
+                    </Grid>
+                </StackPanel>
             </StackPanel>
         </Border>
 

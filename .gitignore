@@ -10,5 +10,7 @@ dist/*.zip
 # IDE
 .vs/
 .idea/
+.vscode/
+.continue/
 *.user
 *.suo

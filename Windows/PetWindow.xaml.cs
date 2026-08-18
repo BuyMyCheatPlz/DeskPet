@@ -29,6 +29,8 @@ public partial class PetWindow : Window
     private bool _shown;
     private System.Windows.Threading.DispatcherTimer? _cursorTimer;
     private System.Windows.Threading.DispatcherTimer? _speechTimer;
+    private readonly System.Collections.Generic.List<DeskPet.Services.AIChatService.ChatMessage> _chatHistory = new();
+    private bool _chatBusy;
 
     private PetWindow()
     {
@@ -320,6 +322,7 @@ public partial class PetWindow : Window
     {
         _panelVisible = false;
         ActionPanel.Visibility = Visibility.Collapsed;
+        ChatBox.Visibility = Visibility.Collapsed;
     }
 
     private void UpdateStats()
@@ -338,8 +341,59 @@ public partial class PetWindow : Window
 
     private void ChatButton_Click(object sender, RoutedEventArgs e)
     {
-        HidePanel();
-        ChatWindow.ShowChat();
+        // Inline chat: toggle the input box under the panel instead of opening a window.
+        if (ChatBox.Visibility == Visibility.Visible)
+        {
+            ChatBox.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ChatBox.Visibility = Visibility.Visible;
+            ChatInput.Focus();
+        }
+    }
+
+    private void ChatInput_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            _ = SendChatAsync();
+        }
+    }
+
+    private async void ChatSend_Click(object sender, RoutedEventArgs e) => await SendChatAsync();
+
+    private async Task SendChatAsync()
+    {
+        if (_chatBusy) return;
+        var text = ChatInput.Text.Trim();
+        if (string.IsNullOrEmpty(text)) return;
+
+        _chatHistory.Add(new AIChatService.ChatMessage("user", text));
+        ChatInput.Clear();
+        ChatReplyText.Text = "…";
+        _chatBusy = true;
+        ChatSendBtn.IsEnabled = false;
+        try
+        {
+            var messages = new List<AIChatService.ChatMessage> { new("system", AIChatService.SystemPrompt) };
+            messages.AddRange(_chatHistory);
+            var reply = await AIChatService.Instance.SendAsync(messages);
+            _chatHistory.Add(new AIChatService.ChatMessage("assistant", reply));
+            ChatReplyText.Text = reply;
+            PetWindow.ShowSpeechBubble(reply);
+        }
+        catch (Exception ex)
+        {
+            ChatReplyText.Text = "⚠️ " + ex.Message;
+        }
+        finally
+        {
+            _chatBusy = false;
+            ChatSendBtn.IsEnabled = true;
+            ChatInput.Focus();
+        }
     }
 
     private void HomeButton_Click(object sender, RoutedEventArgs e)

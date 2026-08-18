@@ -75,7 +75,7 @@
                              Background="#66000000" Foreground="White" BorderThickness="0"
                              Padding="6,5" FontSize="12" AcceptsReturn="True"
                              MaxHeight="70" VerticalScrollBarVisibility="Auto"
-                             KeyDown="ChatInput_KeyDown" />
+                             PreviewKeyDown="ChatInput_PreviewKeyDown" />
                     <Button x:Name="ChatSendBtn" Grid.Column="1" Click="ChatSend_Click"
                             Content="发送" Width="48" Height="30" Margin="6,0,0,0"
                             Background="#FF7A5CD6" Foreground="White" BorderThickness="0"
@@ -91,14 +91,14 @@
                RenderTransformOrigin="0.5,0.5"
                Cursor="Hand" />
 
-        <!-- Speech bubble (cloud-shaped): shows AI replies above the pet's head.
-             Lives in Row 0 (transparent strip above the pet) so it never covers
-             the model. Self-sizes to its content at normal font size, centered. -->
+        <!-- Speech bubble (cloud-shaped): shows AI replies just above the pet's head.
+             Placed in the same row as the model and anchored to its top edge so it
+             hugs the head and is not clipped by the narrow top strip. -->
         <Grid x:Name="SpeechBubble"
-              Grid.Row="0"
+              Grid.Row="1"
               HorizontalAlignment="Center"
-              VerticalAlignment="Bottom"
-              Margin="6,0,6,4"
+              VerticalAlignment="Top"
+              Margin="0,0,0,0"
               IsHitTestVisible="False"
               Visibility="Collapsed">
             <Grid.Effect>

@@ -376,9 +376,11 @@ public partial class PetWindow : Window
         }
     }
 
-    private void ChatInput_KeyDown(object sender, KeyEventArgs e)
+    /// <summary>Enter sends a chat message. Runs in preview so it intercepts the key
+    /// before the TextBox (with AcceptsReturn=true) can insert a newline.</summary>
+    private void ChatInput_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
+        if (e.Key == Key.Enter || e.Key == Key.Return)
         {
             e.Handled = true;
             _ = SendChatAsync();

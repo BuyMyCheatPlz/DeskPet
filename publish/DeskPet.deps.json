@@ -7,7 +7,7 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "DeskPet/1.0.1": {
+      "DeskPet/1.0.2": {
         "dependencies": {
           "runtimepack.Microsoft.Windows.SDK.NET.Ref": "10.0.19041.57"
         },
@@ -30,7 +30,7 @@
     }
   },
   "libraries": {
-    "DeskPet/1.0.1": {
+    "DeskPet/1.0.2": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

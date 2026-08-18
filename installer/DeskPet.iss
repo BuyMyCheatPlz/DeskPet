@@ -1,13 +1,14 @@
 ; Inno Setup script for DeskPet for Windows.
 ; Build:  ISCC.exe DeskPet.iss
-; Produces: dist\DeskPet-setup-1.0.1.exe  (online bootstrap installer)
+; Produces: dist\DeskPet-setup-1.0.2.exe  (online bootstrap installer)
 
 #define MyAppName "DeskPet"
 #define MyAppNameShort "DeskPet"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "BuyMyCheatPlz"
 #define MyAppURL "https://github.com/BuyMyCheatPlz/DeskPet"
 #define MyAppExeName "DeskPet.exe"
+#define MyAppIcon "..\assets\DeskPet.ico"
 
 [Setup]
 AppId={{8E2F3A6C-1D7E-4B2A-9C6F-4D9A0B7C5E21}
@@ -29,6 +30,7 @@ WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 SetupLogging=yes
+SetupIconFile={#MyAppIcon}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -40,10 +42,11 @@ Name: "autostart"; Description: "开机自动启动 DeskPet"; GroupDescription: 
 [Files]
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\publish\Skins\*"; DestDir: "{app}\Skins"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppIcon}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppNameShort}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppNameShort}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppNameShort}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\DeskPet.ico"
+Name: "{autodesktop}\{#MyAppNameShort}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\DeskPet.ico"; Tasks: desktopicon
 
 [Registry]
 ; Optional autostart via HKCU (no admin needed, matches app's own AutoStart).

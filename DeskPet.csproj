@@ -11,6 +11,7 @@
     <AssemblyName>DeskPet</AssemblyName>
     <RootNamespace>DeskPet</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets\DeskPet.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>AnyCPU</Platforms>
     <!-- Note: DO NOT enable InvariantGlobalization. It breaks WPF culture-aware
@@ -22,7 +23,7 @@
     <Product>DeskPet</Product>
     <Description>Desktop pet and dynamic island for Windows</Description>
     <Company>DeskPet</Company>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
   </PropertyGroup>
 
   <ItemGroup>
